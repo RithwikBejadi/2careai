@@ -186,16 +186,20 @@ When `detect_and_set_language` tool fires, it immediately:
 
 ## Latency breakdown
 
-### Target pipeline budget (≤ 450 ms)
+### Target pipeline vs Reality
 
-| Stage | Budget | Implementation |
-|---|---|---|
-| VAD silence detection | ~0 ms | 500 ms silence threshold is detection cost, not latency |
-| Deepgram STT (Nova-2) | ≤ 250 ms | Pre-recorded audio + websocket RTT to Deepgram |
-| Groq TTFT | ≤ 100 ms | llama-3.3-70b on Groq hardware; ~50–80 ms measured |
-| First sentence buffer | ≤ 50 ms | Flush at first `.` / `!` / `?` — typically 4–8 words |
-| ElevenLabs TTS first chunk | ≤ 100 ms | Streaming response; first bytes arrive before full audio |
-| **Total (speech end → first audio)** | **≤ 450 ms** | Matches assignment target |
+The system was designed with a theoretical target latency of ≤ 450 ms. However, due to reliance on free-tier cloud services and rate limits across multiple APIs, **real-world latency is significantly higher (often 2-4 seconds or more)**. 
+
+| Stage | Theoretical Budget | Real-World Observed | Why it's slow (Free-Tier Bottlenecks) |
+|---|---|---|---|
+| VAD silence detection | ~0 ms | 500 ms | Operates locally, but limits how fast we can even *start* processing. |
+| Deepgram STT (Nova-2) | ≤ 250 ms | 500ms - 1.5s+ | Occasional API rate-limiting delays or cold starts on the pre-recorded endpoint. |
+| Groq TTFT (Llama-3.3-70b) | ≤ 100 ms | 200ms - 1s+ | Free-tier token per minute (TPM) limits and occasional queueing/cold starts. |
+| First sentence buffer | ≤ 50 ms | 50ms - 100ms | Depends entirely on LLM token generation speed reaching the first punctuation mark. |
+| ElevenLabs TTS | ≤ 100 ms | 1s - 2s+ | **Major Bottleneck:** Free-tier accounts have tight concurrency limits and processing queues. |
+| Postgres DB (Neon Free) | ~10-20 ms | 100ms - 2s+ | **Major Bottleneck:** Neon suspends free databases after 5 minutes of inactivity. Cold starts take several seconds. |
+| Redis (Upstash Free) | ~1-5 ms | 50ms - 200ms | Free tier introduces network hops and occasional latency spikes. |
+| **Total (speech end → audio)** | **≤ 450 ms** | **2.5s - 5s+** | Free-tier reality across 5 different external services compounding delays. |
 
 ### What is logged
 
@@ -215,13 +219,15 @@ Every turn writes one JSON line to `/app/latency_logs.jsonl`:
 All timestamps are offset from `vad_end_ms = 0` (VAD fire time).
 Read live: `GET /api/latency` returns the last 20 records.
 
-### What keeps it fast
+### What keeps the vision fast (The Architecture)
 
-1. **Groq inference** — dedicated LPU hardware gives consistent ~50 ms TTFT vs ~300 ms on cloud GPU
-2. **ElevenLabs `ulaw_8000`** — skips FFmpeg; Twilio receives mulaw directly
-3. **Sentence-level streaming** — TTS starts on the first completed sentence; user hears audio before LLM finishes generating
-4. **Barge-in** — active pipeline task is cancelled the moment VAD detects new speech; no waiting for current response to finish
-5. **Async throughout** — FastAPI, SQLAlchemy, Deepgram, Redis all use async I/O; no thread blocking
+1. **Groq inference** — dedicated LPU hardware gives consistent TTFT vs cloud GPU, though we are capped by free limits.
+2. **ElevenLabs `ulaw_8000`** — skips FFmpeg; Twilio receives mulaw directly. Highly optimized payload natively natively compatible with Twilio.
+3. **Sentence-level streaming** — TTS starts on the first completed sentence; user hears audio before LLM finishes generating.
+4. **Barge-in** — active pipeline task is cancelled the moment VAD detects new speech; no waiting for current response to finish.
+5. **Async throughout** — FastAPI, SQLAlchemy, Deepgram, Redis all use async I/O; no thread blocking.
+
+**Reality Check:** While architecturally optimized, stringing 5 different free-tier remote services (Neon, Upstash, Deepgram, Groq, ElevenLabs) together over public internet means network RTT + cold starts dictate actual latency.
 
 ---
 
@@ -310,19 +316,23 @@ Campaign outcomes (`booked` / `rescheduled` / `rejected` / `no_answer`) are writ
 
 ## Known limitations
 
-1. **Tamil ASR accuracy** — Deepgram Nova-2 `multi` model has lower WER on Tamil than EN/HI as of 2025. A per-language model selector would improve this at the cost of one extra API round-trip.
+1. **Free-Tier API Latency & Limits** — Stringing multiple free-tier cloud APIs (Neon DB cold starts, Upstash Redis network hops, Groq rate-limits, ElevenLabs queueing) results in compounded latency, heavily inflating the time from patient speech to first TTS response.
 
-2. **webrtcvad + background noise** — aggressiveness=2 works well in quiet environments. Noisy call centres may need aggressiveness=3, which increases false negatives on soft speech.
+2. **Tamil ASR accuracy** — Deepgram Nova-2 `multi` model has lower WER on Tamil than EN/HI as of 2025. A per-language model selector would improve this at the cost of one extra API round-trip.
 
-3. **mulaw conversion is lossy** — audioop `ulaw2lin` is optimised for voice; not an issue for clinical calls.
+3. **webrtcvad + background noise** — aggressiveness=2 works well in quiet environments. Noisy call centers may need aggressiveness=3, which increases false negatives on soft speech.
 
-4. **No speaker diarization** — assumes one speaker per call. Three-way calls could confuse the agent.
+4. **mulaw conversion is lossy** — audioop `ulaw2lin` is optimized for voice; not an issue for clinical calls, but limits the fidelity.
 
-5. **ElevenLabs rate limits** — free tier: 10 000 characters/month. Production requires a paid plan.
+5. **No speaker diarization** — assumes one speaker per call. Three-way calls could confuse the agent.
 
-6. **Celery beat not in docker-compose** — the `worker` container runs the Celery worker. A separate `celery beat` process is needed for hourly reminders. Omitted from compose to prevent duplicate scheduler instances.
+6. **ElevenLabs rate limits** — free tier: 10,000 characters/month. Production requires a paid plan to function consistently.
 
-7. **ngrok URL changes on restart** — free ngrok plan assigns a new URL each session. Update `WS_BASE_URL` + Twilio webhook URL after each ngrok restart.
+7. **Database Cold Starts** — Neon Postgres free tier suspends databases after 5 minutes of inactivity. When a call comes in after a period of quiet, the database takes several seconds to wake up, severely impacting the first interaction.
+
+8. **Celery beat not in docker-compose** — the `worker` container runs the Celery worker. A separate `celery beat` process is needed for hourly reminders. Omitted from compose to prevent duplicate scheduler instances.
+
+9. **ngrok URL changes on restart** — free ngrok plan assigns a new URL each session. Update `WS_BASE_URL` + Twilio webhook URL after each ngrok session restart.
 
 ---
 
