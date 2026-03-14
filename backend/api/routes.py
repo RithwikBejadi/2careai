@@ -1,8 +1,27 @@
-from fastapi import APIRouter
+from __future__ import annotations
 
+import json
+from pathlib import Path
+from typing import Annotated, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from database import get_db
 from memory.redis_client import ping_redis
+from models import Appointment, AppointmentStatus, Doctor, Patient, Slot
 
 router = APIRouter()
+
+_LATENCY_LOG_PATH = Path("/app/latency_logs.jsonl")
+
+
+# ── Health ───────────────────────────────────────────────────────────────────
+
+@router.get("/health")
+def health():
+    return {"status": "healthy"}
 
 
 @router.get("/redis/health")
@@ -10,6 +29,148 @@ def redis_health() -> dict[str, bool]:
     return {"ok": ping_redis()}
 
 
+# ── Doctors ─────────────────────────────────────────────────────────────────
+
 @router.get("/doctors")
-def doctors_stub() -> list[dict[str, str]]:
-    return [{"name": "Dr. Demo", "specialty": "General"}]
+async def list_doctors(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    available_only: bool = False,
+) -> list[dict]:
+    stmt = select(Doctor)
+    if available_only:
+        stmt = stmt.where(Doctor.is_available == True)
+    result = await db.execute(stmt.order_by(Doctor.name))
+    return [d.to_dict() for d in result.scalars().all()]
+
+
+# ── Slots ────────────────────────────────────────────────────────────────────
+
+@router.get("/slots")
+async def list_slots(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    doctor_id: Optional[int] = Query(None),
+    available_only: bool = True,
+) -> list[dict]:
+    stmt = select(Slot)
+    if available_only:
+        stmt = stmt.where(Slot.is_booked == False)
+    if doctor_id:
+        stmt = stmt.where(Slot.doctor_id == doctor_id)
+    result = await db.execute(stmt.order_by(Slot.start_time).limit(50))
+    return [s.to_dict() for s in result.scalars().all()]
+
+
+# ── Patients ─────────────────────────────────────────────────────────────────
+
+@router.get("/patients")
+async def list_patients(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[dict]:
+    result = await db.execute(select(Patient).order_by(Patient.name))
+    return [p.to_dict() for p in result.scalars().all()]
+
+
+@router.get("/patients/{patient_id}")
+async def get_patient(
+    patient_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    result = await db.execute(select(Patient).where(Patient.id == patient_id))
+    patient = result.scalar_one_or_none()
+    if patient is None:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return patient.to_dict()
+
+
+# ── Appointments ─────────────────────────────────────────────────────────────
+
+@router.get("/appointments")
+async def list_appointments(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    status: Optional[str] = Query(None),
+    limit: int = Query(20, le=100),
+) -> list[dict]:
+    stmt = select(Appointment).order_by(Appointment.created_at.desc()).limit(limit)
+    if status:
+        try:
+            stmt = stmt.where(Appointment.status == AppointmentStatus(status))
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
+    result = await db.execute(stmt)
+    return [a.to_dict() for a in result.scalars().all()]
+
+
+# ── Latency ──────────────────────────────────────────────────────────────────
+
+@router.get("/latency")
+def latency(n: int = Query(1, ge=1, le=100)):
+    if not _LATENCY_LOG_PATH.exists():
+        return {"latency_ms": 0, "history": []}
+    lines = _LATENCY_LOG_PATH.read_text(encoding="utf-8").splitlines()
+    if not lines:
+        return {"latency_ms": 0, "history": []}
+    entries = []
+    for line in reversed(lines[-n:]):
+        try:
+            entries.append(json.loads(line))
+        except json.JSONDecodeError:
+            pass
+    latest_ms = entries[0].get("total_ms", 0) if entries else 0
+    return {"latency_ms": latest_ms, "history": entries}
+
+
+# ── Twilio webhook ───────────────────────────────────────────────────────────
+
+@router.post("/twilio/voice")
+async def twilio_voice(request: Request):
+    """Return TwiML connecting Twilio call to the WebSocket media stream."""
+    host = (
+        request.headers.get("X-Forwarded-Host")
+        or request.headers.get("Host", "localhost:8000")
+    )
+    proto = request.headers.get("X-Forwarded-Proto", "http")
+    ws_scheme = "wss" if proto == "https" else "ws"
+    ws_url = f"{ws_scheme}://{host}/ws/call"
+    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Connect>
+        <Stream url="{ws_url}"/>
+    </Connect>
+</Response>"""
+    return Response(content=twiml, media_type="text/xml")
+
+
+# ── Outbound campaign trigger ─────────────────────────────────────────────────
+
+@router.post("/campaigns/trigger")
+async def trigger_campaign(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    patient_id: int,
+    appointment_id: int,
+):
+    """Manually trigger a reminder call for a specific appointment."""
+    from campaigns.tasks import send_reminder
+    send_reminder.delay(patient_id, appointment_id)
+    return {"status": "queued", "patient_id": patient_id, "appointment_id": appointment_id}
+
+
+# ── Direct outbound call trigger ──────────────────────────────────────────────
+
+@router.api_route("/call", methods=["GET", "POST"])
+async def call_number(to: str):
+    """
+    Trigger an outbound call to any E.164 phone number (e.g. +919876543210).
+    Twilio will call the number and connect it to the AI voice agent.
+    """
+    from campaigns.outbound import outbound_call_service
+    try:
+        call_sid = await outbound_call_service.make_call(
+            to_phone=to,
+            patient_id=0,
+            appointment_id=0,
+        )
+        if call_sid:
+            return {"status": "calling", "to": to, "call_sid": call_sid}
+        return {"status": "failed", "to": to, "detail": "Twilio did not return a SID"}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}

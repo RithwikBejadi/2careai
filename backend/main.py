@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from database import init_db
 from api.routes import router
+from api.websocket import router as ws_router
 
 
 @asynccontextmanager
@@ -27,6 +28,7 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api")
+app.include_router(ws_router, prefix="/ws")
 
 @app.get("/health")
 async def health_check():
