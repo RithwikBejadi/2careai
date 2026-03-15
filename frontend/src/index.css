@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #020617;
+    color: #dae2fd;
+    font-family: "Inter", sans-serif;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Scanline Overlay */
+  body::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background:
+      linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%),
+      linear-gradient(
+        90deg,
+        rgba(255, 0, 0, 0.03),
+        rgba(0, 255, 0, 0.01),
+        rgba(0, 0, 255, 0.03)
+      );
+    background-size:
+      100% 3px,
+      3px 100%;
+    pointer-events: none;
+    z-index: 100;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    background: rgba(13, 20, 38, 0.7);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(76, 215, 246, 0.15);
+    box-shadow:
+      0 0 15px rgba(0, 0, 0, 0.5),
+      inset 0 0 1px rgba(76, 215, 246, 0.1);
+  }
+
+  .neon-border-primary {
+    border: 1px solid rgba(76, 215, 246, 0.4);
+    box-shadow:
+      0 0 10px rgba(76, 215, 246, 0.15),
+      inset 0 0 5px rgba(76, 215, 246, 0.05);
+  }
+
+  .hud-text {
+    text-shadow:
+      1px 0 0 rgba(255, 0, 0, 0.2),
+      -1px 0 0 rgba(0, 255, 255, 0.2);
+  }
+
+  .mono-data {
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  .pulse-wave {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .pulse-bar {
+    width: 3px;
+    background: #4cd7f6;
+    border-radius: 1px;
+    box-shadow: 0 0 10px rgba(76, 215, 246, 0.4);
+  }
+
+  .corner-ornament {
+    position: fixed;
+    width: 60px;
+    height: 60px;
+    pointer-events: none;
+    z-index: 60;
+    opacity: 0.4;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #4cd7f6;
+    box-shadow: 0 0 10px #4cd7f6;
+    animation: pulse-fast 1.5s infinite;
+  }
+}

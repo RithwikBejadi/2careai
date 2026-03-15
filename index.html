@@ -1,0 +1,602 @@
+<!doctype html>
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>2careai | Mission Control HUD</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#4cd7f6",
+              "primary-container": "#06b6d4",
+              tertiary: "#ffb2b7",
+              "surface-container-highest": "#2d3449",
+              "on-surface": "#dae2fd",
+              "outline-variant": "#3d494c",
+            },
+            fontFamily: {
+              headline: ["Inter", "sans-serif"],
+              mono: ["JetBrains Mono", "monospace"],
+            },
+            animation: {
+              "pulse-fast": "pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+              "spin-slow": "spin 10s linear infinite",
+              flicker: "flicker 2s infinite",
+            },
+            keyframes: {
+              flicker: {
+                "0%, 100%": { opacity: "1" },
+                "33%": { opacity: "0.98" },
+                "66%": { opacity: "0.99" },
+                "77%": { opacity: "1" },
+                "88%": { opacity: "0.97" },
+                "95%": { opacity: "1" },
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        background-color: #020617;
+        color: #dae2fd;
+        font-family: "Inter", sans-serif;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* Scanline Overlay */
+      body::before {
+        content: " ";
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        background:
+          linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%),
+          linear-gradient(
+            90deg,
+            rgba(255, 0, 0, 0.03),
+            rgba(0, 255, 0, 0.01),
+            rgba(0, 0, 255, 0.03)
+          );
+        background-size:
+          100% 3px,
+          3px 100%;
+        pointer-events: none;
+        z-index: 100;
+      }
+
+      .glass-panel {
+        background: rgba(13, 20, 38, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(76, 215, 246, 0.15);
+        box-shadow:
+          0 0 15px rgba(0, 0, 0, 0.5),
+          inset 0 0 1px rgba(76, 215, 246, 0.1);
+      }
+
+      .neon-border-primary {
+        border: 1px solid rgba(76, 215, 246, 0.4);
+        box-shadow:
+          0 0 10px rgba(76, 215, 246, 0.15),
+          inset 0 0 5px rgba(76, 215, 246, 0.05);
+      }
+
+      .hud-text {
+        text-shadow:
+          1px 0 0 rgba(255, 0, 0, 0.2),
+          -1px 0 0 rgba(0, 255, 255, 0.2);
+      }
+
+      .mono-data {
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      .pulse-wave {
+        height: 60px;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+      }
+      .pulse-bar {
+        width: 3px;
+        background: #4cd7f6;
+        border-radius: 1px;
+        box-shadow: 0 0 10px rgba(76, 215, 246, 0.4);
+      }
+
+      .corner-ornament {
+        position: fixed;
+        width: 60px;
+        height: 60px;
+        pointer-events: none;
+        z-index: 60;
+        opacity: 0.4;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #4cd7f6;
+        box-shadow: 0 0 10px #4cd7f6;
+        animation: pulse-fast 1.5s infinite;
+      }
+    </style>
+  </head>
+  <body class="h-screen w-screen p-6 relative flex flex-col gap-6">
+    <!-- ORNAMENTS -->
+    <div
+      class="corner-ornament top-4 left-4 border-t-2 border-l-2 border-primary/40"
+    ></div>
+    <div
+      class="corner-ornament top-4 right-4 border-t-2 border-r-2 border-primary/40 text-right"
+    >
+      <div class="text-[8px] mono-data pr-1 pt-1">SYS.ONLINE</div>
+    </div>
+    <div
+      class="corner-ornament bottom-4 left-4 border-b-2 border-l-2 border-primary/40 flex items-end"
+    >
+      <div class="text-[8px] mono-data pl-1 pb-1">2CARE_AI // CORE</div>
+    </div>
+    <div
+      class="corner-ornament bottom-4 right-4 border-b-2 border-r-2 border-primary/40 flex justify-end items-end"
+    >
+      <div
+        class="w-6 h-6 border-2 border-primary/20 rounded-full animate-spin-slow border-t-primary/60 mb-1 mr-1"
+      ></div>
+    </div>
+
+    <!-- HEADER / NAV -->
+    <header class="flex justify-between items-center z-50">
+      <div
+        class="flex items-center gap-4 glass-panel neon-border-primary px-6 py-2 rounded-full"
+      >
+        <span class="material-symbols-outlined text-primary">hub</span>
+        <span
+          class="font-headline font-bold tracking-widest text-lg hud-text text-primary"
+          >2CARE_AI_SYS</span
+        >
+      </div>
+      <div>
+        <!-- LangSmith Link -->
+        <a
+          href="https://smith.langchain.com/"
+          target="_blank"
+          class="glass-panel text-primary border border-primary/40 px-6 py-2 rounded-full flex items-center gap-2 hover:bg-primary/10 transition"
+        >
+          <span class="material-symbols-outlined text-sm">monitor_heart</span>
+          <span class="text-xs uppercase tracking-widest font-bold"
+            >LangSmith Traces</span
+          >
+        </a>
+      </div>
+    </header>
+
+    <main class="flex-1 grid grid-cols-12 grid-rows-6 gap-6 z-10">
+      <!-- LIVE CALL STATUS -->
+      <section
+        class="col-span-8 row-span-3 glass-panel neon-border-primary rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden"
+      >
+        <div
+          class="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(76,215,246,0.05),transparent)] pointer-events-none"
+        ></div>
+
+        <div class="flex justify-between items-start z-10">
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <div id="call-status-dot" class="status-dot"></div>
+              <h2
+                class="text-xs font-black text-primary/70 uppercase tracking-[0.3em]"
+              >
+                Live Call Status
+              </h2>
+            </div>
+            <h3
+              id="call-status-text"
+              class="text-3xl font-headline font-light hud-text text-white"
+            >
+              Active Connection:
+              <span class="text-primary font-bold">Patient Triage</span>
+            </h3>
+          </div>
+          <div class="text-right">
+            <div
+              class="text-[10px] text-primary/50 uppercase tracking-widest mb-1"
+            >
+              Duration
+            </div>
+            <div
+              id="call-timer"
+              class="mono-data text-2xl text-primary drop-shadow-[0_0_8px_rgba(76,215,246,0.4)]"
+            >
+              00:00
+            </div>
+          </div>
+        </div>
+
+        <!-- WAVEFORM -->
+        <div class="flex-1 flex items-center justify-center my-4 z-10">
+          <div
+            id="waveform"
+            class="pulse-wave scale-150 opacity-80 transition-opacity"
+          >
+            <!-- Bars generated via JS -->
+          </div>
+        </div>
+
+        <!-- ACTIVE TRANSCRIPT (MOCK) -->
+        <div
+          class="z-10 bg-black/40 border border-primary/20 rounded-lg p-3 h-24 overflow-y-auto w-full font-mono text-xs text-primary/80 space-y-2"
+          id="transcript-container"
+        >
+          <div class="flex gap-2">
+            <span class="font-bold opacity-60">[SYS]</span>
+            <span>Awaiting audio stream...</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- LATENCY MONITOR -->
+      <section
+        class="col-span-4 row-span-3 glass-panel neon-border-primary rounded-2xl p-6 flex flex-col relative"
+      >
+        <div class="flex items-center justify-between mb-4 z-10">
+          <h2
+            class="text-xs font-black text-primary/70 uppercase tracking-[0.3em]"
+          >
+            Latency Telemetry
+          </h2>
+          <div
+            class="text-[9px] mono-data bg-primary/20 text-primary px-2 py-0.5 rounded-sm border border-primary/40 font-bold"
+          >
+            API /_LATENCY
+          </div>
+        </div>
+
+        <div
+          class="flex-1 flex flex-col justify-end gap-2 overflow-y-auto mb-4"
+          id="latency-logs"
+        >
+          <!-- Latency entries -->
+        </div>
+
+        <div class="mt-auto border-t border-primary/20 pt-4">
+          <div class="flex justify-between items-end">
+            <div>
+              <div
+                class="text-[10px] uppercase tracking-widest text-primary/50 mb-1"
+              >
+                Avg Response Time
+              </div>
+              <div class="mono-data text-xl text-primary" id="avg-latency">
+                0ms
+              </div>
+            </div>
+            <div>
+              <div
+                class="text-[10px] uppercase tracking-widest text-primary/50 mb-1 text-right"
+              >
+                Last Turn
+              </div>
+              <div
+                class="mono-data text-2xl font-bold text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]"
+                id="current-latency"
+              >
+                0ms
+              </div>
+            </div>
+          </div>
+          <div class="w-full h-1 bg-primary/10 mt-2 rounded overflow-hidden">
+            <div
+              id="latency-bar"
+              class="h-full bg-primary w-0 transition-all duration-300"
+            ></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RECENT BOOKINGS -->
+      <section
+        class="col-span-12 row-span-3 glass-panel neon-border-primary rounded-2xl flex flex-col overflow-hidden"
+      >
+        <div
+          class="px-6 py-4 border-b border-primary/10 bg-black/20 flex justify-between items-center"
+        >
+          <h2
+            class="text-xs font-black text-primary/70 uppercase tracking-[0.3em] flex items-center gap-2"
+          >
+            <span class="material-symbols-outlined text-[16px]"
+              >calendar_month</span
+            >
+            Recent Bookings
+          </h2>
+          <div
+            class="px-2 py-1 bg-primary/10 border border-primary/30 rounded text-[9px] mono-data text-primary animate-pulse"
+          >
+            LIVE SYNC
+          </div>
+        </div>
+
+        <div class="flex-1 p-6 overflow-y-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr
+                class="text-[10px] uppercase tracking-widest text-primary/50 border-b border-primary/20"
+              >
+                <th class="pb-3 font-medium">Patient / ID</th>
+                <th class="pb-3 font-medium">Time / Date</th>
+                <th class="pb-3 font-medium">Provider</th>
+                <th class="pb-3 font-medium">Type</th>
+                <th class="pb-3 font-medium text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody id="bookings-table" class="text-sm font-mono text-white/80">
+              <!-- Filled by JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      // JS Logic to poll endpoints and render UI
+
+      const API_BASE = "http://localhost:8000/api";
+
+      // DOM Elements
+      const latencyLogsEl = document.getElementById('latency-logs');
+      const currentLatencyEl = document.getElementById('current-latency');
+      const avgLatencyEl = document.getElementById('avg-latency');
+      const latencyBarEl = document.getElementById('latency-bar');
+      const bookingsTableEl = document.getElementById('bookings-table');
+      const callStatusDot = document.getElementById('call-status-dot');
+      const callStatusText = document.getElementById('call-status-text');
+      const waveformEl = document.getElementById('waveform');
+      const transcriptContainer = document.getElementById('transcript-container');
+      const callTimerEl = document.getElementById('call-timer');
+
+      // State
+      let latencies = [];
+      let isCallActive = false;
+      let callSeconds = 0;
+      let callTimerInterval = null;
+
+      // Waveform generation
+      function renderWaveform(active) {
+          waveformEl.innerHTML = '';
+          const bars = 15;
+          for(let i=0; i<bars; i++) {
+              const bar = document.createElement('div');
+              bar.className = 'pulse-bar h-[20px] transition-all duration-100 ease-in-out';
+              if(active) {
+                  bar.style.animation = \`pulse \${0.8 + Math.random()}s infinite\`;
+                  bar.style.height = \`\${Math.random() * 80 + 20}px\`;
+                  if (Math.random() > 0.7) {
+                      bar.classList.add('bg-white');
+                      bar.classList.add('shadow-[0_0_15px_#fff]');
+                  }
+              } else {
+                  bar.style.height = '4px';
+                  bar.style.animation = 'none';
+              }
+              waveformEl.appendChild(bar);
+          }
+      }
+
+      renderWaveform(false);
+
+      // Simulated transcipt
+      const mockTranscripts = [
+          "Patient: I need to book an appointment next week.",
+          "Agent: I can help with that. What day works best?",
+          "Patient: Tuesday morning around 10 AM.",
+          "Agent: Let me check Dr. Smith's availability.",
+          "Agent: Tuesday at 10 AM is available. Booking now."
+      ];
+      let transcriptIdx = 0;
+
+      // Fetch latency data
+      async function fetchLatency() {
+          try {
+              // To support actual backend if running, otherwise mock
+              const res = await fetch(\`\${API_BASE}/latency\`).catch(() => null);
+              let latestLatency = 0;
+
+              if (res && res.ok) {
+                  const data = await res.json();
+                  latestLatency = data.latency_ms || data.latency || 0;
+              } else {
+                  // MOCK logic if no backend is found (for easy demonstration)
+                  if(isCallActive && Math.random() > 0.5) {
+                      latestLatency = Math.floor(Math.random() * (600 - 250) + 250);
+                  }
+              }
+
+              if (latestLatency > 0) {
+                  addLatencyLog(latestLatency);
+
+                  // Add mock transcript
+                  if(isCallActive) {
+                      addTranscriptLog(Math.random() > 0.5 ? 'PATIENT' : 'SYS', mockTranscripts[transcriptIdx % mockTranscripts.length]);
+                      transcriptIdx++;
+                  }
+              }
+
+          } catch(e) {
+              console.error(e);
+          }
+      }
+
+      function addLatencyLog(ms) {
+          latencies.push(ms);
+          if(latencies.length > 20) latencies.shift();
+
+          // Update UI
+          currentLatencyEl.innerText = \`\${ms}ms\`;
+
+          const avg = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
+          avgLatencyEl.innerText = \`\${avg}ms\`;
+
+          // Bar width (assuming max 1000ms is 100%)
+          const pct = Math.min((ms / 1000) * 100, 100);
+          latencyBarEl.style.width = \`\${pct}%\`;
+
+          if(ms < 400) {
+              latencyBarEl.className = 'h-full bg-primary transition-all duration-300 shadow-[0_0_10px_#4cd7f6]';
+              currentLatencyEl.className = 'mono-data text-2xl font-bold text-primary drop-shadow-[0_0_8px_rgba(76,215,246,0.4)]';
+          } else if (ms < 800) {
+              latencyBarEl.className = 'h-full bg-yellow-400 transition-all duration-300 shadow-[0_0_10px_#fbbf24]';
+              currentLatencyEl.className = 'mono-data text-2xl font-bold text-yellow-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]';
+          } else {
+              latencyBarEl.className = 'h-full bg-tertiary transition-all duration-300 shadow-[0_0_10px_#ffb2b7]';
+              currentLatencyEl.className = 'mono-data text-2xl font-bold text-tertiary drop-shadow-[0_0_8px_rgba(255,178,183,0.4)]';
+          }
+
+          const div = document.createElement('div');
+          div.className = 'flex justify-between items-center text-xs mono-data border-l-2 pl-2 ' + (ms < 400 ? 'border-primary text-primary/70' : 'border-tertiary text-tertiary/70');
+          div.innerHTML = \`
+              <span>\${new Date().toISOString().split('T')[1].slice(0, 12)}</span>
+              <span class="font-bold">\${ms}ms</span>
+          \`;
+
+          latencyLogsEl.appendChild(div);
+          if(latencyLogsEl.children.length > 8) {
+              latencyLogsEl.removeChild(latencyLogsEl.firstChild);
+          }
+      }
+
+      function addTranscriptLog(speaker, text) {
+          const div = document.createElement('div');
+          const isSys = speaker === 'SYS';
+          div.className = \`flex gap-2 border-l-2 \${isSys ? 'border-primary/40' : 'border-white/40'} pl-2\`;
+          div.innerHTML = \`
+              <span class="font-bold \${isSys ? 'text-primary' : 'text-white'}">\${speaker}:</span>
+              <span class="opacity-80 \${isSys ? 'text-primary/90' : 'text-white'}">\${text}</span>
+          \`;
+          transcriptContainer.appendChild(div);
+          transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+      }
+
+      // Fetch bookings data
+      async function fetchBookings() {
+          try {
+              const res = await fetch(\`\${API_BASE}/bookings\`).catch(() => null);
+              let bookings = [];
+
+              if (res && res.ok) {
+                  bookings = await res.json();
+              } else {
+                  // MOCK logic if no backend
+                  bookings = [
+                      { id: "BKG-9921", patient: "John Doe", time: new Date(Date.now() + 86400000).toLocaleString(), provider: "Dr. Smith", type: "Follow-up", status: "CONFIRMED" },
+                      { id: "BKG-9922", patient: "Jane Roe", time: new Date(Date.now() + 172800000).toLocaleString(), provider: "Dr. Adams", type: "Consultation", status: "CONFIRMED" },
+                      { id: "BKG-9920", patient: "Alice Tan", time: new Date(Date.now() + 3600000).toLocaleString(), provider: "Dr. Smith", type: "Urgent", status: "PENDING" }
+                  ];
+              }
+
+              renderBookings(bookings);
+          } catch(e) {
+              console.error(e);
+          }
+      }
+
+      function renderBookings(bookings) {
+          bookingsTableEl.innerHTML = '';
+          bookings.forEach(b => {
+              const tr = document.createElement('tr');
+              tr.className = 'border-b border-white/5 hover:bg-white/5 transition-colors group';
+              tr.innerHTML = \`
+                  <td class="py-3">
+                      <div class="font-bold text-white">\${b.patient}</div>
+                      <div class="text-[10px] text-primary/60">\${b.id}</div>
+                  </td>
+                  <td class="py-3 text-white/80">\${b.time || 'TBD'}</td>
+                  <td class="py-3 text-white/80">\${b.provider}</td>
+                  <td class="py-3">
+                      <span class="px-2 py-1 rounded-sm bg-primary/10 border border-primary/20 text-[10px] text-primary">
+                          \${b.type}
+                      </span>
+                  </td>
+                  <td class="py-3 text-right">
+                      <div class="flex items-center justify-end gap-2 text-[10px] uppercase font-bold \${b.status === 'CONFIRMED' ? 'text-primary' : 'text-tertiary'}">
+                          <span class="w-1.5 h-1.5 rounded-full \${b.status === 'CONFIRMED' ? 'bg-primary shadow-[0_0_5px_#4cd7f6]' : 'bg-tertiary animate-pulse'}"></span>
+                          \${b.status}
+                      </div>
+                  </td>
+              \`;
+              bookingsTableEl.appendChild(tr);
+          });
+      }
+
+      // Live Call Status simulation (just for the demo to look alive)
+      setInterval(() => {
+          // Randomly toggle call status occasionally or keep active
+          // Let's just keep it active if we want to show numbers, or flip it
+          if(!isCallActive && Math.random() > 0.8) {
+              isCallActive = true;
+              callStatusDot.className = "status-dot bg-tertiary shadow-[0_0_10px_#ffb2b7] animate-pulse";
+              callStatusText.innerHTML = \`Active Connection: <span class="text-tertiary font-bold animate-pulse">Patient Inbound</span>\`;
+              renderWaveform(true);
+              addTranscriptLog('SYS', 'Call connected. Voice stream active.');
+              callTimerInterval = setInterval(() => {
+                  callSeconds++;
+                  const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+                  const secs = String(callSeconds % 60).padStart(2, '0');
+                  callTimerEl.innerText = \`\${mins}:\${secs}\`;
+              }, 1000);
+          } else if (isCallActive && Math.random() > 0.95 && callSeconds > 20) {
+              isCallActive = false;
+              callStatusDot.className = "status-dot bg-white/20 shadow-none animation-none";
+              callStatusText.innerHTML = \`System Idle: <span class="text-white/40">Awaiting Calls</span>\`;
+              renderWaveform(false);
+              addTranscriptLog('SYS', 'Call disconnected.');
+              clearInterval(callTimerInterval);
+              callSeconds = 0;
+          }
+      }, 3000);
+
+      // Init
+      setInterval(fetchLatency, 1000);
+      setInterval(fetchBookings, 5000);
+
+      // Initial fetch
+      fetchLatency();
+      fetchBookings();
+
+      // Let's start with an active call for immediate demo effect
+      setTimeout(() => {
+          isCallActive = true;
+          callStatusDot.className = "status-dot bg-tertiary shadow-[0_0_10px_#ffb2b7] animate-pulse";
+          callStatusText.innerHTML = \`Active Connection: <span class="text-tertiary font-bold animate-pulse">Patient Inbound</span>\`;
+          renderWaveform(true);
+          callTimerInterval = setInterval(() => {
+              callSeconds++;
+              const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+              const secs = String(callSeconds % 60).padStart(2, '0');
+              callTimerEl.innerText = \`\${mins}:\${secs}\`;
+          }, 1000);
+      }, 1000);
+    </script>
+  </body>
+</html>
