@@ -19,7 +19,7 @@ from voice.tts import elevenlabs_tts
 
 logger = logging.getLogger(__name__)
 
-_LATENCY_LOG_PATH = Path("/app/latency_logs.jsonl")
+_LATENCY_LOG_PATH = Path(__file__).parent.parent / "latency_logs.jsonl"
 _SENTENCE_END_RE = re.compile(r"(?<=[.!?।])\s+")
 
 

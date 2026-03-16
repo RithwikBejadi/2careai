@@ -14,7 +14,26 @@ from models import Appointment, AppointmentStatus, Doctor, Patient, Slot
 
 router = APIRouter()
 
-_LATENCY_LOG_PATH = Path("/app/latency_logs.jsonl")
+_LATENCY_LOG_PATH = Path(__file__).parent.parent / "latency_logs.jsonl"
+
+# In-memory store for real call status and transcripts
+import asyncio
+from typing import Any
+
+_active_calls: dict[str, dict[str, Any]] = {}
+_transcript_store: dict[str, list[dict]] = {}
+
+def register_call(session_id: str, to_phone: str) -> None:
+    _active_calls[session_id] = {"to": to_phone, "active": True, "started_at": __import__('time').time()}
+    _transcript_store[session_id] = []
+
+def add_transcript(session_id: str, speaker: str, text: str) -> None:
+    if session_id in _transcript_store:
+        _transcript_store[session_id].append({"speaker": speaker, "text": text})
+
+def end_call(session_id: str) -> None:
+    if session_id in _active_calls:
+        _active_calls[session_id]["active"] = False
 
 
 # ── Health ───────────────────────────────────────────────────────────────────
@@ -170,7 +189,64 @@ async def call_number(to: str):
             appointment_id=0,
         )
         if call_sid:
+            register_call(call_sid, to)
             return {"status": "calling", "to": to, "call_sid": call_sid}
         return {"status": "failed", "to": to, "detail": "Twilio did not return a SID"}
     except Exception as e:
         return {"status": "error", "detail": str(e)}
+
+
+# ── Bookings alias ────────────────────────────────────────────────────────────
+
+@router.get("/bookings")
+async def list_bookings(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(20, le=100),
+) -> list[dict]:
+    stmt = select(Appointment).order_by(Appointment.created_at.desc()).limit(limit)
+    result = await db.execute(stmt)
+    return [a.to_dict() for a in result.scalars().all()]
+
+
+# ── Live call status ──────────────────────────────────────────────────────────
+
+@router.get("/call-status")
+def get_call_status() -> dict:
+    import time
+    active = [
+        {"session_id": sid, "to": info["to"], "elapsed_s": round(time.time() - info["started_at"])}
+        for sid, info in _active_calls.items()
+        if info.get("active")
+    ]
+    most_recent = max(
+        _active_calls.items(),
+        key=lambda kv: kv[1]["started_at"],
+        default=(None, {})
+    )
+    return {
+        "is_active": len(active) > 0,
+        "active_calls": active,
+        "latest_session_id": most_recent[0],
+    }
+
+
+# ── Live transcripts ──────────────────────────────────────────────────────────
+
+@router.get("/transcript")
+def get_transcript(session_id: Optional[str] = Query(None)) -> dict:
+    if not session_id:
+        latest = max(
+            _active_calls.items(),
+            key=lambda kv: kv[1]["started_at"],
+            default=(None, {})
+        )
+        session_id = latest[0]
+
+    if not session_id or session_id not in _transcript_store:
+        return {"session_id": session_id, "turns": []}
+
+    return {
+        "session_id": session_id,
+        "is_active": _active_calls.get(session_id, {}).get("active", False),
+        "turns": _transcript_store[session_id]
+    }

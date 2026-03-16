@@ -10,6 +10,7 @@ from typing import Optional
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
+from api.routes import add_transcript, end_call
 from database import _SessionFactory
 from memory.session import session_memory
 from models import Patient
@@ -108,13 +109,22 @@ async def twilio_ws(websocket: WebSocket) -> None:
                     await session_memory.set_patient_id(session_id, patient_id)
 
             audio_chunks: list[bytes] = []
+            stt_transcript: list[str] = []
+
+            async def stt_with_tracking(pcm_bytes: bytes) -> str:
+                text = await deepgram_stt.transcribe_pcm(pcm_bytes)
+                if text.strip():
+                    add_transcript(session_id, "patient", text)
+                    stt_transcript.append(text)
+                return text
+
             async for chunk in voice_pipeline.handle_turn(
                 pcm_audio=pcm,
                 session_id=session_id,
                 lang=lang,
                 db=db,
                 patient_id=patient_id,
-                stt_func=deepgram_stt.transcribe_pcm,
+                stt_func=stt_with_tracking,
             ):
                 audio_chunks.append(chunk)
 
@@ -190,6 +200,7 @@ async def twilio_ws(websocket: WebSocket) -> None:
     except Exception as exc:
         logger.error("[WS] error session=%s: %s", session_id, exc)
     finally:
+        end_call(session_id)
         processor.cancel()
         try:
             await session_memory.delete_session(session_id)

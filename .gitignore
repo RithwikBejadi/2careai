@@ -1,31 +1,21 @@
-# Secrets
-.env
-*.pem
-*.key
-
 # Python
 __pycache__/
 *.py[cod]
 *.pyo
-*.pyd
+venv/
+.env
+*.log
+latency_logs.jsonl
 *.egg-info/
 dist/
 build/
-*.egg
 
-# Virtualenv
-.venv/
-venv/
-ENV/
+# Node
+node_modules/
+frontend/dist/
 
-# IDEs
+# Misc
+.DS_Store
 .idea/
 .vscode/
 *.swp
-
-# Logs
-*.log
-latency_logs.jsonl
-
-# macOS
-.DS_Store

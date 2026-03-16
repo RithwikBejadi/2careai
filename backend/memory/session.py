@@ -23,7 +23,7 @@ class SessionMemory:
     def _get_client(self) -> aioredis.Redis:
         if self._client is None:
             self._client = aioredis.from_url(
-                settings.REDIS_URL, decode_responses=True, ssl_cert_reqs=None
+                settings.REDIS_URL, decode_responses=True
             )
         return self._client
 

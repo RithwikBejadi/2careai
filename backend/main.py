@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -15,22 +16,28 @@ async def lifespan(app: FastAPI):
     yield
     print("Shutting down...")
 
+
 app = FastAPI(
-    title = "Voice AI Agent - Clinical Appointments",
+    title="2careai Voice AI Agent",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
+_allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "*")
+allowed_origins = [o.strip() for o in _allowed_origins_env.split(",") if o.strip()] or ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 app.include_router(router, prefix="/api")
 app.include_router(ws_router, prefix="/ws")
 
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
-
