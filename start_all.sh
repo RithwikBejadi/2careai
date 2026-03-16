@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Stopping existing services..."
-killall node uvicorn ngrok 2>/dev/null || true
+killall node uvicorn 2>/dev/null || true
 sleep 1
 # Force-free ports just in case
 lsof -ti :5173 | xargs kill -9 2>/dev/null || true
@@ -20,12 +20,9 @@ cd frontend
 nohup npm run dev > vite.log 2>&1 &
 cd ..
 
-echo "Starting Ngrok tunnel..."
-nohup ngrok http --domain=melaine-homochronous-cristian.ngrok-free.dev 8001 > ngrok.log 2>&1 &
-
 echo "========================================="
-echo "✅ All services successfully started in the background!"
+echo "✅ All services successfully started!"
 echo "📡 Frontend: http://localhost:5173"
 echo "⚙️  Backend:  http://localhost:8001"
-echo "🌐 Ngrok:    https://melaine-homochronous-cristian.ngrok-free.dev"
+echo "🌐 Production: https://twocareai-backend.onrender.com"
 echo "========================================="
