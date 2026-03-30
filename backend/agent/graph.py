@@ -17,7 +17,8 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     system_prompt: str
 
-_llm = ChatGroq(model='llama-3.3-70b-versatile', api_key=settings.GROQ_API_KEY, temperature=0.3)
+_groq_key = settings.GROQ_API_KEY if settings.GROQ_API_KEY else "gsk_dummy"
+_llm = ChatGroq(model='llama-3.3-70b-versatile', api_key=_groq_key, temperature=0.3)
 _llm_with_tools = _llm.bind_tools(ALL_TOOLS)
 
 def _agent_node(state: AgentState) -> dict:

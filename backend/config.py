@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = ''
     GEMINI_API_KEY: str = ''
     OPENAI_API_KEY: str = ''
-    GROQ_API_KEY: str
+    GROQ_API_KEY: str = ''
     DEEPGRAM_API_KEY: str
     ELEVENLABS_API_KEY: str
     TWILIO_ACCOUNT_SID: str
