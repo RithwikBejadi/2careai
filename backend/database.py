@@ -23,7 +23,6 @@ from models import (
 
 logger = logging.getLogger(__name__)
 
-# ── Build asyncpg-compatible URL ──────────────────────────────────────────────
 def _make_asyncpg_url(url: str) -> str:
     url = url.replace("postgresql://", "postgresql+asyncpg://")
     url = url.replace("postgres://", "postgresql+asyncpg://")
@@ -41,6 +40,8 @@ _engine = create_async_engine(
     connect_args={"ssl": _ssl_ctx},
     pool_size=5,
     max_overflow=10,
+    pool_pre_ping=True,
+    pool_recycle=300,
     echo=False,
 )
 
@@ -52,7 +53,6 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-# ── Seeder ────────────────────────────────────────────────────────────────────
 class Seeder:
     async def seed(self, db: AsyncSession) -> None:
         await self._seed_doctors(db)
@@ -94,9 +94,9 @@ class Seeder:
         available_doctors = result.scalars().all()
 
         slot_times = [
-            (3, 30),   # 03:30 UTC
-            (5, 30),   # 05:30 UTC
-            (7, 30),   # 07:30 UTC
+            (3, 30),   
+            (5, 30),   
+            (7, 30),
         ]
         today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         slots = []

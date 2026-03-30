@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 from typing import Annotated, Sequence
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
@@ -17,7 +17,7 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     system_prompt: str
 
-_llm = ChatGoogleGenerativeAI(model='gemini-2.5-flash', api_key=settings.GOOGLE_API_KEY, temperature=0.3)
+_llm = ChatGroq(model='llama-3.3-70b-versatile', api_key=settings.GROQ_API_KEY, temperature=0.3)
 _llm_with_tools = _llm.bind_tools(ALL_TOOLS)
 
 def _agent_node(state: AgentState) -> dict:
