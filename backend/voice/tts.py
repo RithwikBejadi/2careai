@@ -35,30 +35,20 @@ class EdgeTTS:
             if not mp3_buffer:
                 return
 
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-                f.write(mp3_buffer)
-                temp_name = f.name
-                
-            try:
-                pcm_data = bytearray()
-                with audioread.audio_open(temp_name) as f_audio:
-                    sample_rate = f_audio.samplerate
-                    channels = f_audio.channels
-                    for buf in f_audio:
-                        pcm_data.extend(buf)
-                        
-                if channels == 2:
-                    pcm_data = audioop.tomono(bytes(pcm_data), 2, 1, 1)
-
-                pcm_8k, _ = audioop.ratecv(bytes(pcm_data), 2, 1, sample_rate, 8000, None)
-                ulaw_bytes = audioop.lin2ulaw(pcm_8k, 2)
-                
-                chunk_size = 2048
-                for i in range(0, len(ulaw_bytes), chunk_size):
-                    yield ulaw_bytes[i:i + chunk_size]
-            finally:
-                if os.path.exists(temp_name):
-                    os.unlink(temp_name)
+            import io
+            from pydub import AudioSegment
+            
+            # Decode in-memory using pydub (which natively uses imageio_ffmpeg now)
+            audio = AudioSegment.from_file(io.BytesIO(mp3_buffer), format="mp3")
+            
+            # Convert to 8kHz mono mulaw
+            audio = audio.set_frame_rate(8000).set_channels(1)
+            pcm_8k = audio.raw_data
+            ulaw_bytes = audioop.lin2ulaw(pcm_8k, 2)
+            
+            chunk_size = 2048
+            for i in range(0, len(ulaw_bytes), chunk_size):
+                yield ulaw_bytes[i:i + chunk_size]
                     
         except Exception as exc:
             logger.error('[edge-tts] error generating audio for %s: %s', voice_id, str(exc))

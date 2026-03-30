@@ -37,7 +37,15 @@ _ssl_ctx.verify_mode = ssl.CERT_NONE
 
 _engine = create_async_engine(
     _make_asyncpg_url(settings.DATABASE_URL),
-    connect_args={"ssl": _ssl_ctx},
+    connect_args={
+        "ssl": _ssl_ctx,
+        "command_timeout": 10,
+        "server_settings": {
+            "tcp_keepalives_idle": "30",
+            "tcp_keepalives_interval": "10",
+            "tcp_keepalives_count": "5",
+        }
+    },
     pool_size=5,
     max_overflow=10,
     pool_pre_ping=True,
