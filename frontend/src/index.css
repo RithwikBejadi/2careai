@@ -4,93 +4,57 @@
 
 @layer base {
   body {
-    background-color: #020617;
-    color: #dae2fd;
-    font-family: "Inter", sans-serif;
-    overflow: hidden;
-    position: relative;
-  }
-
-  /* Scanline Overlay */
-  body::before {
-    content: " ";
-    display: block;
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    background:
-      linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%),
-      linear-gradient(
-        90deg,
-        rgba(255, 0, 0, 0.03),
-        rgba(0, 255, 0, 0.01),
-        rgba(0, 0, 255, 0.03)
-      );
-    background-size:
-      100% 3px,
-      3px 100%;
-    pointer-events: none;
-    z-index: 100;
+    @apply bg-slate-50 text-slate-900 font-sans antialiased overflow-x-hidden;
   }
 }
 
 @layer components {
-  .glass-panel {
-    background: rgba(13, 20, 38, 0.7);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(76, 215, 246, 0.15);
-    box-shadow:
-      0 0 15px rgba(0, 0, 0, 0.5),
-      inset 0 0 1px rgba(76, 215, 246, 0.1);
+  /* Sleek Glassmorphism Cards */
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-xl border border-white/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl;
+  }
+  
+  /* Primary Clinical Accents */
+  .clinical-gradient {
+    @apply bg-gradient-to-br from-blue-500 to-teal-400 text-white;
   }
 
-  .neon-border-primary {
-    border: 1px solid rgba(76, 215, 246, 0.4);
-    box-shadow:
-      0 0 10px rgba(76, 215, 246, 0.15),
-      inset 0 0 5px rgba(76, 215, 246, 0.05);
+  .clinical-text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-teal-500;
   }
 
-  .hud-text {
-    text-shadow:
-      1px 0 0 rgba(255, 0, 0, 0.2),
-      -1px 0 0 rgba(0, 255, 255, 0.2);
+  /* Subdued animations */
+  .pulse-ring {
+    animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
   }
 
-  .mono-data {
-    font-family: "JetBrains Mono", monospace;
+  @keyframes pulse-ring {
+    0% {
+      transform: scale(0.8);
+      box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.7);
+    }
+    70% {
+      transform: scale(1);
+      box-shadow: 0 0 0 10px rgba(20, 184, 166, 0);
+    }
+    100% {
+      transform: scale(0.8);
+      box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+    }
   }
 
-  .pulse-wave {
-    height: 60px;
-    display: flex;
-    align-items: center;
-    gap: 3px;
+  /* Scrollbar override for clean UI */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
   }
-  .pulse-bar {
-    width: 3px;
-    background: #4cd7f6;
-    border-radius: 1px;
-    box-shadow: 0 0 10px rgba(76, 215, 246, 0.4);
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
-
-  .corner-ornament {
-    position: fixed;
-    width: 60px;
-    height: 60px;
-    pointer-events: none;
-    z-index: 60;
-    opacity: 0.4;
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full;
   }
-
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: #4cd7f6;
-    box-shadow: 0 0 10px #4cd7f6;
-    animation: pulse-fast 1.5s infinite;
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-300;
   }
 }
