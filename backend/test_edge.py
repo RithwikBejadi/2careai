@@ -29,8 +29,6 @@ async def test():
                 
         print(f"Decoded {len(pcm_data)} bytes of PCM at {sample_rate} Hz with {channels} channels")
         
-        # Twilio needs 8000 Hz, mono (1 channel), 16-bit PCM converted to ulaw
-        # First convert to mono if stereo
         if channels == 2:
             pcm_data = audioop.tomono(bytes(pcm_data), 2, 1, 1)
             

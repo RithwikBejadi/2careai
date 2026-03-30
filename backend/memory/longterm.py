@@ -88,7 +88,6 @@ def build_system_prompt(
         else:
             parts.append("No previous appointments on record.")
 
-    # Inject last 6 turns for context continuity
     if recent_turns:
         turns_to_inject = recent_turns[-6:]
         turn_text = "\n".join(

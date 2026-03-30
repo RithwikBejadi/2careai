@@ -25,7 +25,6 @@ class VAD:
         self._silence_frames: int = 0
 
     def reset(self) -> None:
-        self._pcm_buffer = b''
         self._speech_buffer = b''
         self._is_speaking = False
         self._speech_frames = 0

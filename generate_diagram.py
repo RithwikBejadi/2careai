@@ -12,7 +12,6 @@ ax.axis("off")
 fig.patch.set_facecolor("#0f172a")
 ax.set_facecolor("#0f172a")
 
-# ── colour palette ──────────────────────────────────────────────────────────
 C_BLUE   = "#38bdf8"
 C_PURPLE = "#a78bfa"
 C_GREEN  = "#34d399"

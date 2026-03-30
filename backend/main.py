@@ -5,20 +5,28 @@ from contextlib import asynccontextmanager
 from database import init_db
 from api.routes import router
 from api.websocket import router as ws_router
+import logging
 
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("app")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starting up...")
-    print("Initializing database...")
-    await init_db()
-    print("Database initialized.")
+    logger.info("Starting up...")
+    logger.info("Initializing database...")
+    try:
+        await init_db()
+    except Exception as e:
+        logger.error("DataBase Initialization Failed")
+        raise
+        
+    logger.info("Database initialized.")
     yield
-    print("Shutting down...")
+    logger.info("Shutting down...")
 
 
 app = FastAPI(
-    title="2careai Voice AI Agent",
+    title="Voice AI Agent",
     version="1.0.0",
     lifespan=lifespan,
 )

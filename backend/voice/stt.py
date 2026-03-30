@@ -32,7 +32,6 @@ class DeepgramSTT:
             )
             response = await self._client.listen.asyncprerecorded.v("1").transcribe_file(payload, options)
             
-            # The structure returned by deepgram
             if isinstance(response, dict):
                 text = response.get("results", {}).get("channels", [{}])[0].get("alternatives", [{}])[0].get("transcript", "")
             else:

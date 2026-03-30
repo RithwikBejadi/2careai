@@ -16,7 +16,6 @@ router = APIRouter()
 
 _LATENCY_LOG_PATH = Path(__file__).parent.parent / "latency_logs.jsonl"
 
-# In-memory store for real call status and transcripts
 import asyncio
 from typing import Any
 
@@ -36,7 +35,6 @@ def end_call(session_id: str) -> None:
         _active_calls[session_id]["active"] = False
 
 
-# ── Health ───────────────────────────────────────────────────────────────────
 
 @router.get("/health")
 def health():
@@ -48,7 +46,6 @@ def redis_health() -> dict[str, bool]:
     return {"ok": ping_redis()}
 
 
-# ── Doctors ─────────────────────────────────────────────────────────────────
 
 @router.get("/doctors")
 async def list_doctors(
@@ -62,7 +59,6 @@ async def list_doctors(
     return [d.to_dict() for d in result.scalars().all()]
 
 
-# ── Slots ────────────────────────────────────────────────────────────────────
 
 @router.get("/slots")
 async def list_slots(
@@ -79,7 +75,6 @@ async def list_slots(
     return [s.to_dict() for s in result.scalars().all()]
 
 
-# ── Patients ─────────────────────────────────────────────────────────────────
 
 @router.get("/patients")
 async def list_patients(
@@ -101,7 +96,6 @@ async def get_patient(
     return patient.to_dict()
 
 
-# ── Appointments ─────────────────────────────────────────────────────────────
 
 @router.get("/appointments")
 async def list_appointments(
@@ -119,7 +113,6 @@ async def list_appointments(
     return [a.to_dict() for a in result.scalars().all()]
 
 
-# ── Latency ──────────────────────────────────────────────────────────────────
 
 @router.get("/latency")
 def latency(n: int = Query(1, ge=1, le=100)):
@@ -138,7 +131,6 @@ def latency(n: int = Query(1, ge=1, le=100)):
     return {"latency_ms": latest_ms, "history": entries}
 
 
-# ── Twilio webhook ───────────────────────────────────────────────────────────
 
 @router.post("/twilio/voice")
 async def twilio_voice(request: Request):

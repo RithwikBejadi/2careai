@@ -3,7 +3,7 @@
 ## Overview
 
 2careai is a **real-time AI voice agent** for clinical appointment management. A patient receives an outbound phone call, speaks naturally (in English, Hindi, or Tamil), and the AI agent books, cancels, or reschedules appointments on their behalf — with zero human involvement.
-
+v
 ---
 
 ## High-Level Architecture

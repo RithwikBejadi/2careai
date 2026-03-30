@@ -7,7 +7,7 @@ import redis.asyncio as aioredis
 
 from config import settings
 
-_SESSION_TTL = 60 * 30   # 30 minutes
+_SESSION_TTL = 60 * 30
 _MAX_TURNS = 10
 
 
@@ -27,7 +27,6 @@ class SessionMemory:
             )
         return self._client
 
-    # ── Conversation turns ─────────────────────────────────────────────────
 
     async def add_turn(self, session_id: str, role: str, content: str) -> None:
         """Append a conversation turn; keep only the last _MAX_TURNS entries."""
@@ -52,7 +51,6 @@ class SessionMemory:
                 pass
         return result
 
-    # ── Pending confirmation ────────────────────────────────────────────────
 
     async def set_pending(self, session_id: str, data: dict) -> None:
         """Store a pending confirmation (e.g. awaiting patient yes/no)."""
@@ -68,7 +66,6 @@ class SessionMemory:
         client = self._get_client()
         await client.delete(_key(session_id, "pending"))
 
-    # ── Language ────────────────────────────────────────────────────────────
 
     async def set_language(self, session_id: str, lang: str) -> None:
         client = self._get_client()
@@ -79,7 +76,6 @@ class SessionMemory:
         val = await client.get(_key(session_id, "language"))
         return val or "en"
 
-    # ── Patient ID ─────────────────────────────────────────────────────────
 
     async def set_patient_id(self, session_id: str, patient_id: int) -> None:
         client = self._get_client()
@@ -90,7 +86,6 @@ class SessionMemory:
         val = await client.get(_key(session_id, "patient_id"))
         return int(val) if val is not None else None
 
-    # ── Agent state ─────────────────────────────────────────────────────────
 
     async def set_agent_state(self, session_id: str, state: dict) -> None:
         client = self._get_client()
@@ -101,7 +96,6 @@ class SessionMemory:
         raw = await client.get(_key(session_id, "agent_state"))
         return json.loads(raw) if raw else None
 
-    # ── Session cleanup ─────────────────────────────────────────────────────
 
     async def delete_session(self, session_id: str) -> None:
         client = self._get_client()

@@ -98,11 +98,9 @@ async def twilio_ws(websocket: WebSocket) -> None:
             except asyncio.CancelledError:
                 pass
 
-        # Open a fresh DB session for this turn
         async with _SessionFactory() as db:
             lang = await session_memory.get_language(session_id) or lang
 
-            # Lazy patient ID resolution (from phone number on first real turn)
             if patient_id is None and caller_phone:
                 patient_id = await _resolve_patient(db, caller_phone)
                 if patient_id:
@@ -128,7 +126,6 @@ async def twilio_ws(websocket: WebSocket) -> None:
             ):
                 audio_chunks.append(chunk)
 
-        # Stream audio outside the DB session
         if audio_chunks and stream_sid:
             active_tts_task = asyncio.create_task(
                 _play_chunks(audio_chunks, stream_sid)
