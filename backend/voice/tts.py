@@ -38,10 +38,8 @@ class EdgeTTS:
             import io
             from pydub import AudioSegment
             
-            # Decode in-memory using pydub (which natively uses imageio_ffmpeg now)
             audio = AudioSegment.from_file(io.BytesIO(mp3_buffer), format="mp3")
             
-            # Convert to 8kHz mono mulaw
             audio = audio.set_frame_rate(8000).set_channels(1)
             pcm_8k = audio.raw_data
             ulaw_bytes = audioop.lin2ulaw(pcm_8k, 2)
@@ -53,4 +51,4 @@ class EdgeTTS:
         except Exception as exc:
             logger.error('[edge-tts] error generating audio for %s: %s', voice_id, str(exc))
 
-elevenlabs_tts = EdgeTTS()  # Keep variable name same so websocket.py keeps working
+elevenlabs_tts = EdgeTTS()
