@@ -13,6 +13,7 @@ deepgram-sdk==3.4.0
 edge-tts>=6.1.9
 pydub>=0.25.1
 audioread>=3.0.0
+imageio-ffmpeg>=0.5.0
 audioop-lts>=0.2.1
 langchain>=0.2.16
 langgraph>=0.2.28

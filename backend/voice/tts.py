@@ -6,6 +6,9 @@ import audioread
 import audioop
 import tempfile
 import os
+import imageio_ffmpeg
+
+os.environ["PATH"] += os.pathsep + os.path.dirname(imageio_ffmpeg.get_ffmpeg_exe())
 
 logger = logging.getLogger(__name__)
 
