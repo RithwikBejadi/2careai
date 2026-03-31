@@ -38,10 +38,6 @@ function App() {
   const [phoneNumber, setPhoneNumber] = useState("+91");
   const [isCalling, setIsCalling] = useState(false);
   
-  // Basic security for triggering calls
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("ADMIN_API_KEY") || "");
-  useEffect(() => { localStorage.setItem("ADMIN_API_KEY", apiKey); }, [apiKey]);
-
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
@@ -51,10 +47,7 @@ function App() {
     if (!phoneNumber || phoneNumber.length < 8) return;
     setIsCalling(true);
     try {
-      const res = await fetch(`${API_BASE}/call?to=${encodeURIComponent(phoneNumber)}`, { 
-        method: "POST",
-        headers: { "X-API-Key": apiKey }
-      });
+      const res = await fetch(`${API_BASE}/call?to=${encodeURIComponent(phoneNumber)}`, { method: "POST" });
       const data = await res.json();
       if (res.ok && data.status === "calling") {
         setIsCallActive(true);
@@ -271,19 +264,9 @@ function App() {
             <p className="text-sm text-slate-500 mt-1">Monitor real-time voice sessions and patient appointments.</p>
           </div>
 
-          {/* Quick Dialer & Security */}
+          {/* Quick Dialer */}
           <div className="flex items-center gap-3 bg-white p-1.5 rounded-full border border-slate-200 shadow-sm">
-            <div className="flex items-center px-3 gap-2 border-r border-slate-100">
-              <span className="material-symbols-outlined text-slate-400 text-[16px]">lock</span>
-              <input
-                type="password"
-                placeholder="API Key"
-                value={apiKey}
-                onChange={e => setApiKey(e.target.value)}
-                className="bg-transparent outline-none text-slate-700 text-sm w-24 font-medium placeholder-slate-300 focus:ring-0"
-              />
-            </div>
-            <div className="flex items-center px-2 gap-2">
+            <div className="flex items-center px-3 gap-2">
               <span className="material-symbols-outlined text-slate-400 text-[18px]">phone_enabled</span>
               <input
                 type="text"

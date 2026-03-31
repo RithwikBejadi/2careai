@@ -151,7 +151,6 @@ async def twilio_voice(request: Request):
     return Response(content=twiml, media_type="text/xml")
 
 
-# ── Outbound campaign trigger ─────────────────────────────────────────────────
 
 @router.post("/campaigns/trigger")
 async def trigger_campaign(
@@ -165,19 +164,8 @@ async def trigger_campaign(
     return {"status": "queued", "patient_id": patient_id, "appointment_id": appointment_id}
 
 
-from fastapi.security import APIKeyHeader
-
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
-
-async def verify_admin(api_key: str = Depends(api_key_header)):
-    from config import settings
-    if api_key != settings.ADMIN_API_KEY:
-        raise HTTPException(status_code=403, detail="Unauthorized: Invalid API Key")
-
-# ── Direct outbound call trigger ──────────────────────────────────────────────
-
 @router.api_route("/call", methods=["GET", "POST"])
-async def call_number(to: str, _: None = Depends(verify_admin)):
+async def call_number(to: str):
     """
     Trigger an outbound call to any E.164 phone number (e.g. +919876543210).
     Twilio will call the number and connect it to the AI voice agent.
@@ -197,7 +185,6 @@ async def call_number(to: str, _: None = Depends(verify_admin)):
         return {"status": "error", "detail": str(e)}
 
 
-# ── Bookings alias ────────────────────────────────────────────────────────────
 
 @router.get("/bookings")
 async def list_bookings(
@@ -209,7 +196,6 @@ async def list_bookings(
     return [a.to_dict() for a in result.scalars().all()]
 
 
-# ── Live call status ──────────────────────────────────────────────────────────
 
 @router.get("/call-status")
 def get_call_status() -> dict:

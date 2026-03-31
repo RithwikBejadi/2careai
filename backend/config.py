@@ -12,7 +12,6 @@ class Settings(BaseSettings):
     TWILIO_ACCOUNT_SID: str
     TWILIO_AUTH_TOKEN: str
     TWILIO_PHONE_NUMBER: str
-    ADMIN_API_KEY: str = 'default_secret_key'
     API_BASE_URL: str = ''
     WS_BASE_URL: str = ''
     LANGCHAIN_TRACING_V2: str = 'true'
