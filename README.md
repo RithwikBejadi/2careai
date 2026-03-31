@@ -1,4 +1,4 @@
-# 2careai — Real-Time Multilingual Voice AI Agent
+# Voice Agent — Real-Time Multilingual Voice AI Agent
 
 A production-grade real-time voice AI agent for clinical appointment scheduling.
 Patients call a Twilio number, speak naturally in **English, Hindi, or Tamil**, and the agent books, cancels, or reschedules appointments — no IVR menus, no human in the loop.
@@ -348,7 +348,7 @@ Campaign outcomes (`booked` / `rescheduled` / `rejected` / `no_answer`) are writ
 ## Project structure
 
 ```
-2careai/
+Voice Agent/
 ├── docker-compose.yml
 ├── .env.example
 ├── architecture.png

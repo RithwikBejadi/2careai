@@ -1,6 +1,5 @@
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
-// In production, set VITE_API_BASE=https://your-backend.onrender.com/api
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
 interface Booking {
@@ -39,13 +38,11 @@ function App() {
   const [phoneNumber, setPhoneNumber] = useState("+91");
   const [isCalling, setIsCalling] = useState(false);
   
-  // Basic states for Navigation Simulation
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
   const callTimerRef = useRef<number | null>(null);
 
-  // ── Call handler ─────────────────────────────────────────────────────────
   const handleCallAPI = async () => {
     if (!phoneNumber || phoneNumber.length < 8) return;
     setIsCalling(true);
@@ -68,14 +65,12 @@ function App() {
     }
   };
 
-  // ── Auto-scroll transcript ────────────────────────────────────────────────
   useEffect(() => {
     if (transcriptContainerRef.current) {
       transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
     }
   }, [transcripts]);
 
-  // ── Poll call-status ────────────────────────────────────────────
   useEffect(() => {
     const poll = async () => {
       try {
@@ -153,7 +148,6 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // ── Poll bookings ──────────────────────────────────────────────
   useEffect(() => {
     const fetchBookings = async () => {
       try {
@@ -170,7 +164,6 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // ── Derived stats ─────────────────────────────────────────────────
   const avgMs = latencyHistory.length > 0
     ? Math.round(latencyHistory.reduce((a, b) => a + b.total_ms, 0) / latencyHistory.length)
     : 0;
@@ -188,11 +181,28 @@ function App() {
     return "bg-amber-100 text-amber-700 border-amber-200";
   };
 
-  // Dedup calls from latency telemetry for the "Call Logs" view
-  const recentCalls = Array.from(new Set(latencyHistory.map(l => l.session_id)))
-    .filter(Boolean)
-    .map(sid => latencyHistory.find(l => l.session_id === sid))
-    .slice(0, 10);
+  // ── Polling Langsmith Runs ────────────────────────────────────────────────
+  const [langsmithRuns, setLangsmithRuns] = useState<any[]>([]);
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let interval: number;
+    const fetchRuns = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/langsmith/runs?limit=10`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.runs) setLangsmithRuns(data.runs);
+        }
+      } catch (_) {}
+    };
+
+    if (activeTab === 'logs') {
+      fetchRuns();
+      interval = window.setInterval(fetchRuns, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [activeTab]);
 
   return (
     <div className="flex bg-slate-50 min-h-screen text-slate-800 font-sans">
@@ -203,7 +213,7 @@ function App() {
           <div className="w-10 h-10 rounded-xl clinical-gradient flex items-center justify-center shadow-lg shadow-blue-500/20">
             <span className="material-symbols-outlined text-white text-xl">vital_signs</span>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">2care<span className="text-blue-500">.ai</span></h1>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Voice<span className="text-blue-500">Agent</span></h1>
         </div>
 
         <nav className="w-full px-4 flex flex-col gap-2">
@@ -411,67 +421,81 @@ function App() {
               <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-4 flex justify-between items-center">
                 <h3 className="font-semibold text-slate-800 flex items-center gap-2">
                   <span className="material-symbols-outlined text-indigo-500 text-[20px]">history</span>
-                  Incoming & Outgoing Logs
+                  Extracted Conversation History (from LangSmith)
                 </h3>
+                <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">LIVE SYNC</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50/80 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200">
-                      <th className="px-6 py-4 font-medium">Session ID / Context</th>
-                      <th className="px-6 py-4 font-medium">Direction</th>
-                      <th className="px-6 py-4 font-medium">Latency (Speed)</th>
-                      <th className="px-6 py-4 font-medium text-right">Status</th>
+                    <tr className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                      <th className="px-6 py-4 font-medium">Trace Name / ID</th>
+                      <th className="px-6 py-4 font-medium">Date & Time</th>
+                      <th className="px-6 py-4 font-medium">Graph Latency</th>
+                      <th className="px-6 py-4 font-medium text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="text-sm divide-y divide-slate-100">
-                    {recentCalls.length === 0 && (
+                    {langsmithRuns.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-slate-400">No recent calls logged.</td>
+                        <td colSpan={4} className="px-6 py-12 text-center text-slate-400">Loading traces from LangSmith...</td>
                       </tr>
+                    ) : (
+                      langsmithRuns.map((run) => {
+                        const isExpanded = expandedRunId === run.id;
+                        return (
+                          <React.Fragment key={run.id}>
+                            <tr className={`transition-colors cursor-pointer ${isExpanded ? 'bg-blue-50/50' : 'hover:bg-slate-50/50'}`} onClick={() => setExpandedRunId(isExpanded ? null : run.id)}>
+                              <td className="px-6 py-4">
+                                <div className="font-semibold text-slate-800 mb-1">{run.name}</div>
+                                <div className="font-mono text-xs text-slate-500">{run.id.slice(0, 8)}...</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-slate-600">
+                                {run.start_time ? new Date(run.start_time).toLocaleString() : '—'}
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${run.latency_ms > 3000 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                  <span className="material-symbols-outlined text-[14px]">timer</span>
+                                  {run.latency_ms > 0 ? `${run.latency_ms.toFixed(0)} ms` : '—'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <button className="text-blue-500 hover:bg-blue-50 p-2 rounded-full transition-colors inline-flex">
+                                  <span className="material-symbols-outlined">
+                                    {isExpanded ? 'expand_less' : 'expand_more'}
+                                  </span>
+                                </button>
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr>
+                                <td colSpan={4} className="p-0 border-t-0">
+                                  <div className="bg-slate-50/50 px-8 py-6 border-b border-slate-100">
+                                    <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                                      <span className="material-symbols-outlined text-[16px]">forum</span>
+                                      Agent Interaction Log
+                                    </h4>
+                                    <div className="space-y-4 max-w-4xl bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                                      {run.messages && run.messages.length > 0 ? (
+                                        run.messages.map((msg: any, i: number) => (
+                                          <div key={i} className={`flex ${msg.role === 'ai' ? 'justify-start' : 'justify-end'}`}>
+                                            <div className={`max-w-[85%] rounded-2xl px-5 py-3 ${msg.role === 'ai' ? 'bg-blue-50 text-blue-900 rounded-tl-none border border-blue-100' : 'bg-slate-800 text-white rounded-tr-none shadow-md'}`}>
+                                              <p className="text-sm leading-relaxed">{msg.text}</p>
+                                            </div>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <div className="text-center text-slate-400 text-sm">No text messages recorded in this run.</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })
                     )}
-                    {recentCalls.map((log, idx) => {
-                      if (!log) return null;
-                      // Extrapolate direction: if it matches the manually dialed number (conceptually), it's outbound. 
-                      // Without backend persistance, we randomize mildly or assume Incoming as default for now.
-                      const isFirstObj = idx === 0 && isCallActive;
-                      const dir = isFirstObj && isCalling ? "Outgoing" : "Incoming"; 
-                      
-                      return (
-                        <tr key={log.session_id ?? idx} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="font-mono text-xs text-slate-500 mb-1">{log.session_id}</div>
-                            <div className="text-slate-700 max-w-xs truncate" title={log.transcript}>
-                              "{log.transcript ?? "No speech detected"}"
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${dir === 'Incoming' ? 'bg-teal-50 text-teal-700' : 'bg-blue-50 text-blue-700'}`}>
-                              <span className="material-symbols-outlined text-[14px]">
-                                {dir === 'Incoming' ? 'call_received' : 'call_made'}
-                              </span>
-                              {dir}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <span className={`font-semibold ${log.total_ms > 1000 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                {log.total_ms} ms
-                              </span>
-                            </div>
-                            <div className="text-[10px] text-slate-400 mt-0.5">
-                              STT: {log.stt_ms}ms • LLM: {log.llm_ms}ms
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <span className="text-emerald-500 text-sm font-semibold flex items-center justify-end gap-1">
-                              <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                              Completed
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
                   </tbody>
                 </table>
               </div>

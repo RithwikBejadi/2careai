@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 _SSL_OPTS = {"ssl_cert_reqs": ssl.CERT_NONE}
 
 celery_app = Celery(
-    "2careai",
+    "Voice Agent",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
 )

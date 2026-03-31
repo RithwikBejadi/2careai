@@ -222,7 +222,6 @@ def get_call_status() -> dict:
     }
 
 
-# ── Live transcripts ──────────────────────────────────────────────────────────
 
 @router.get("/transcript")
 def get_transcript(session_id: Optional[str] = Query(None)) -> dict:
@@ -242,3 +241,65 @@ def get_transcript(session_id: Optional[str] = Query(None)) -> dict:
         "is_active": _active_calls.get(session_id, {}).get("active", False),
         "turns": _transcript_store[session_id]
     }
+
+
+
+@router.get("/langsmith/runs")
+async def get_langsmith_runs(limit: int = Query(20, le=100)):
+    """Fetch exact conversation history (Human vs AI) directly from LangSmith traces."""
+    try:
+        from langsmith import Client
+        from config import settings
+        
+        client = Client()
+        runs_iter = client.list_runs(
+            project_name=settings.LANGCHAIN_PROJECT,
+            is_root=True,
+            limit=limit,
+            execution_order=1
+        )
+        
+        history = []
+        for run in runs_iter:
+            messages = []
+            try:
+                inputs = run.inputs or {}
+                outputs = run.outputs or {}
+                
+                def extract_text(m):
+                    if isinstance(m, dict):
+                        return m.get("content") or m.get("text") or str(m)
+                    elif hasattr(m, "content"):
+                        return m.content
+                    return str(m)
+                
+                user_msg = inputs.get("messages", [])
+                if isinstance(user_msg, list) and len(user_msg) > 0:
+                    user_text = extract_text(user_msg[-1])
+                    messages.append({"role": "user", "text": user_text})
+                
+                ai_msg = outputs.get("messages", [])
+                if isinstance(ai_msg, list) and len(ai_msg) > 0:
+                    ai_text = extract_text(ai_msg[-1])
+                    if hasattr(ai_msg[-1], "response_metadata") and ai_msg[-1].response_metadata:
+                          # Sometimes the AI message has metadata, but we just want content
+                          pass
+                    messages.append({"role": "ai", "text": ai_text})
+                    
+            except Exception:
+                pass
+
+            history.append({
+                "id": str(run.id),
+                "name": run.name,
+                "start_time": run.start_time.isoformat() if run.start_time else None,
+                "status": run.status,
+                "messages": messages,
+                "latency_ms": getattr(run, "latency", 0) * 1000 if hasattr(run, "latency") and run.latency else 0
+            })
+            
+        return {"runs": history}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}

@@ -1,8 +1,8 @@
-# 2careai — System Architecture
+# Voice Agent — System Architecture
 
 ## Overview
 
-2careai is a **real-time AI voice agent** for clinical appointment management. A patient receives an outbound phone call, speaks naturally (in English, Hindi, or Tamil), and the AI agent books, cancels, or reschedules appointments on their behalf — with zero human involvement.
+Voice Agent is a **real-time AI voice agent** for clinical appointment management. A patient receives an outbound phone call, speaks naturally (in English, Hindi, or Tamil), and the AI agent books, cancels, or reschedules appointments on their behalf — with zero human involvement.
 v
 ---
 
@@ -39,7 +39,7 @@ Patient Phone
 ## Directory Structure
 
 ```
-2careai/
+Voice Agent/
 ├── backend/
 │   ├── main.py              # FastAPI app entry point + CORS + lifespan
 │   ├── config.py            # Pydantic Settings (env vars, extra=allow)
