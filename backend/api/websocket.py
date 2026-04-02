@@ -71,7 +71,7 @@ async def twilio_ws(websocket: WebSocket) -> None:
 
     vad = VAD(aggressiveness=2, on_speech_end=_on_speech_end)
 
-    # ── TTS helpers ──────────────────────────────────────────────────────────
+    
 
     async def _stream_tts(text: str, sid: str) -> None:
         interrupt_event.clear()
@@ -84,12 +84,12 @@ async def twilio_ws(websocket: WebSocket) -> None:
         except Exception as exc:
             logger.error("[tts] %s", exc)
 
-    # ── Per-turn processing via full VoicePipeline ───────────────────────────
+    
 
     async def _process_speech(pcm: bytes) -> None:
         nonlocal active_tts_task, lang, patient_id
 
-        # Barge-in: cancel active TTS
+        
         if active_tts_task and not active_tts_task.done():
             interrupt_event.set()
             active_tts_task.cancel()
@@ -150,7 +150,7 @@ async def twilio_ws(websocket: WebSocket) -> None:
 
     processor = asyncio.create_task(_speech_processor())
 
-    # ── Main Twilio Media Streams event loop ─────────────────────────────────
+    
 
     try:
         async for message in websocket.iter_text():
@@ -160,14 +160,14 @@ async def twilio_ws(websocket: WebSocket) -> None:
             if event == "start":
                 start_data = data.get("start", {})
                 stream_sid = start_data.get("streamSid")
-                # Extract caller phone from custom parameters or Twilio start payload
+                
                 caller_phone = (
                     start_data.get("customParameters", {}).get("from", "")
                     or start_data.get("from", "")
                 )
                 logger.info("[WS] call started stream=%s caller=%s", stream_sid, caller_phone)
 
-                # Determine greeting language from stored preference
+                
                 if caller_phone:
                     async with _SessionFactory() as db:
                         pid = await _resolve_patient(db, caller_phone)

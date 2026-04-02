@@ -277,7 +277,7 @@ async def get_langsmith_runs(limit: int = Query(20, le=100)):
                 if isinstance(ai_msg, list) and len(ai_msg) > 0:
                     ai_text = extract_text(ai_msg[-1])
                     if hasattr(ai_msg[-1], "response_metadata") and ai_msg[-1].response_metadata:
-                          # Sometimes the AI message has metadata, but we just want content
+                          
                           pass
                     messages.append({"role": "ai", "text": ai_text})
                     

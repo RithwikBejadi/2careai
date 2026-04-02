@@ -73,7 +73,7 @@ class VoicePipeline:
         """
         t_vad_end = time.monotonic()
 
-        # ── STT ──────────────────────────────────────────────────────────────
+        
         transcript = await stt_func(pcm_audio)
         t_stt_done = time.monotonic()
 
@@ -82,10 +82,10 @@ class VoicePipeline:
 
         logger.info("[pipeline] STT=%r", transcript)
 
-        # ── Session memory: log patient turn ─────────────────────────────────
+        
         await session_memory.add_turn(session_id, "patient", transcript)
 
-        # ── Build context-aware system prompt ────────────────────────────────
+        
         patient_ctx: dict = {}
         if patient_id:
             try:
@@ -96,7 +96,7 @@ class VoicePipeline:
         recent_turns = await session_memory.get_turns(session_id)
         system_prompt = build_system_prompt(patient_ctx, recent_turns, lang=lang)
 
-        # ── Wire tool context & run agent ────────────────────────────────────
+        
         set_tool_context(db, session_id, patient_id)
 
         try:
@@ -112,10 +112,10 @@ class VoicePipeline:
         t_llm_done = time.monotonic()
         logger.info("[pipeline] LLM=%r", response_text)
 
-        # ── Session memory: log agent turn ────────────────────────────────────
+        
         await session_memory.add_turn(session_id, "agent", response_text)
 
-        # ── TTS: sentence-by-sentence streaming ──────────────────────────────
+        
         sentences = _split_sentences(response_text)
         if not sentences:
             sentences = [response_text]
@@ -129,7 +129,7 @@ class VoicePipeline:
 
         t_done = time.monotonic()
 
-        # ── Latency logging ───────────────────────────────────────────────────
+        
         entry = {
             "session_id": session_id,
             "transcript": transcript[:80],

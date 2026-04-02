@@ -92,7 +92,7 @@ class SlotService:
         patient_id: int,
         notes: Optional[str] = None,
     ) -> Appointment:
-        # SELECT FOR UPDATE to prevent race conditions
+        
         result = await db.execute(
             select(Slot)
             .where(Slot.id == slot_id)
@@ -123,7 +123,7 @@ class SlotService:
             alts = await self._nearest_open_slots(db, near_time=slot_start)
             raise ConflictError("That slot is already taken. Here are nearby available slots.", alternatives=alts)
 
-        # Check patient overlap
+        
         overlap_result = await db.execute(
             select(Appointment)
             .join(Appointment.slot)
@@ -190,14 +190,14 @@ class SlotService:
         new_slot_id: int,
         patient_id: int,
     ) -> Appointment:
-        # Cancel old appointment (releases its slot)
+        
         old = await self.cancel_appointment(
             db, appointment_id=appointment_id, patient_id=patient_id
         )
         old.status = AppointmentStatus.RESCHEDULED
         await db.flush()
 
-        # Book the new slot
+        
         new_appt = await self.book_appointment(
             db,
             slot_id=new_slot_id,
@@ -207,7 +207,7 @@ class SlotService:
         await db.commit()
         return new_appt
 
-    # ── Private helpers ─────────────────────────────────────────────────────
+    
 
     async def _next_available(self, db: AsyncSession, doctor_id: int, limit: int = 3) -> list[dict]:
         now = datetime.now(tz=timezone.utc)
@@ -258,6 +258,6 @@ class SlotService:
         return [s.to_dict() for s in result.scalars().all()]
 
 
-from sqlalchemy import func  # noqa: E402 (needed for _nearest_open_slots)
+from sqlalchemy import func  
 
 slot_service = SlotService()

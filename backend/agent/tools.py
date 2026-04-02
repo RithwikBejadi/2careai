@@ -10,7 +10,7 @@ from memory.longterm import update_language_preference
 from memory.session import session_memory
 from scheduling.slots import ConflictError, slot_service
 
-# ── Per-request context vars ─────────────────────────────────────────────────
+
 _db_ctx: contextvars.ContextVar[Optional[AsyncSession]] = contextvars.ContextVar(
     "db", default=None
 )
@@ -36,13 +36,13 @@ def _detect_language(text: str) -> str:
     for ch in text:
         cp = ord(ch)
         if 0x0B80 <= cp <= 0x0BFF:
-            return "ta"   # Tamil
+            return "ta"   
         if 0x0900 <= cp <= 0x097F:
-            return "hi"   # Devanagari (Hindi)
-    return "en"            # English fallback
+            return "hi"   
+    return "en"            
 
 
-# ── Tools ────────────────────────────────────────────────────────────────────
+
 
 @tool
 async def check_availability(

@@ -66,7 +66,7 @@ def section_bg(ax, x, y, w, h, color, alpha=0.06):
     ax.add_patch(rect)
 
 # ── title ───────────────────────────────────────────────────────────────────
-ax.text(9, 11.5, "Voice Agent — Real-Time Multilingual Voice AI Architecture",
+ax.text(9, 11.5, "2careai — Real-Time Multilingual Voice AI Architecture",
         ha="center", va="center", color=C_TEXT, fontsize=14, fontweight="bold")
 
 # ── INBOUND CALL FLOW (left column, top-to-bottom) ──────────────────────────

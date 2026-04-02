@@ -93,7 +93,7 @@ function App() {
     return () => clearInterval(interval);
   }, [isCallActive]);
 
-  // ── Call timer ────────────────────────────────────────────────────────────
+  
   useEffect(() => {
     if (isCallActive) {
       callTimerRef.current = window.setInterval(() => setCallSeconds(s => s + 1), 1000);
@@ -103,7 +103,7 @@ function App() {
     return () => { if (callTimerRef.current) clearInterval(callTimerRef.current); };
   }, [isCallActive]);
 
-  // ── Poll transcript ─────────────────────────
+  
   useEffect(() => {
     const pollTranscript = async () => {
       try {
@@ -130,7 +130,7 @@ function App() {
     return () => clearInterval(interval);
   }, [latestSessionId, isCallActive]);
 
-  // ── Poll latency ───────────────────────────────────────────────
+  
   useEffect(() => {
     const fetchLatency = async () => {
       try {
@@ -181,7 +181,7 @@ function App() {
     return "bg-amber-100 text-amber-700 border-amber-200";
   };
 
-  // ── Polling Langsmith Runs ────────────────────────────────────────────────
+  
   const [langsmithRuns, setLangsmithRuns] = useState<any[]>([]);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
@@ -207,7 +207,7 @@ function App() {
   return (
     <div className="flex bg-slate-50 min-h-screen text-slate-800 font-sans">
       
-      {/* ── SIDEBAR ── */}
+      {}
       <aside className="w-64 bg-white border-r border-slate-200 flex flex-col items-center py-8 shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-20">
         <div className="flex items-center gap-3 mb-12">
           <div className="w-10 h-10 rounded-xl clinical-gradient flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -252,10 +252,10 @@ function App() {
         </div>
       </aside>
 
-      {/* ── MAIN CONTENT ── */}
+      {}
       <main className="flex-1 flex flex-col max-h-screen overflow-y-auto">
         
-        {/* HEADER */}
+        {}
         <header className="flex justify-between items-center px-10 py-6 border-b border-slate-200/60 bg-white/50 backdrop-blur-md sticky top-0 z-10">
           <div>
             <h2 className="text-2xl font-bold text-slate-800">
@@ -264,7 +264,7 @@ function App() {
             <p className="text-sm text-slate-500 mt-1">Monitor real-time voice sessions and patient appointments.</p>
           </div>
 
-          {/* Quick Dialer */}
+          {}
           <div className="flex items-center gap-3 bg-white p-1.5 rounded-full border border-slate-200 shadow-sm">
             <div className="flex items-center px-3 gap-2">
               <span className="material-symbols-outlined text-slate-400 text-[18px]">phone_enabled</span>
@@ -288,7 +288,7 @@ function App() {
 
         <div className="p-10 flex flex-col gap-8 max-w-7xl mx-auto w-full">
           
-          {/* KPI CARDS */}
+          {}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="glass-card p-6 flex flex-col justify-between">
               <div className="flex justify-between items-start mb-4">
@@ -340,7 +340,7 @@ function App() {
           {activeTab === 'dashboard' && (
             <div className="grid grid-cols-12 gap-8">
               
-              {/* LIVE TRANSCRIPT */}
+              {}
               <div className="col-span-12 lg:col-span-8 glass-card flex flex-col overflow-hidden">
                 <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-4 flex justify-between items-center">
                   <h3 className="font-semibold text-slate-800 flex items-center gap-2">
@@ -377,7 +377,7 @@ function App() {
                 </div>
               </div>
 
-              {/* RECENT BOOKINGS (Sidebar widget) */}
+              {}
               <div className="col-span-12 lg:col-span-4 glass-card flex flex-col overflow-hidden">
                 <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
                   <h3 className="font-semibold text-slate-800 flex items-center gap-2">

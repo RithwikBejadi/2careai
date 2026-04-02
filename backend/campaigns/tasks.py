@@ -62,7 +62,7 @@ def send_reminder(self, patient_id: int, appointment_id: int, language: str = "e
         from campaigns.outbound import outbound_call_service
 
         async with _SessionFactory() as db:
-            # Fetch appointment + patient
+            
             appt_result = await db.execute(
                 select(Appointment).where(Appointment.id == appointment_id)
             )
@@ -79,7 +79,7 @@ def send_reminder(self, patient_id: int, appointment_id: int, language: str = "e
                 logger.warning("[reminder] patient %d not found", patient_id)
                 return
 
-            # Place the call
+            
             call_sid = await outbound_call_service.make_call(
                 to_phone=patient.phone,
                 patient_id=patient_id,
@@ -89,7 +89,7 @@ def send_reminder(self, patient_id: int, appointment_id: int, language: str = "e
 
             outcome = "pending" if call_sid else "no_answer"
 
-            # Log in CampaignLog
+            
             log = CampaignLog(
                 patient_id=patient_id,
                 campaign_type="appointment_reminder",
@@ -125,7 +125,7 @@ def schedule_reminders():
             now = datetime.now(tz=timezone.utc)
             window_end = now + timedelta(hours=24)
 
-            # Appointments scheduled in the next 24 hours
+            
             result = await db.execute(
                 select(Appointment)
                 .join(Appointment.slot)
@@ -139,7 +139,7 @@ def schedule_reminders():
 
             queued = 0
             for appt in appointments:
-                # Check if already sent a reminder
+                
                 log_result = await db.execute(
                     select(CampaignLog).where(
                         CampaignLog.patient_id == appt.patient_id,
@@ -150,7 +150,7 @@ def schedule_reminders():
                 if existing:
                     continue
 
-                # Fetch patient language
+                
                 from models import Patient
                 pat_result = await db.execute(
                     select(Patient).where(Patient.id == appt.patient_id)
